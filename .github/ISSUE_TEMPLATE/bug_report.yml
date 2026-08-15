@@ -1,0 +1,121 @@
+name: Report a Bug
+description: Tell us when a window does not center or another part of the utility behaves unexpectedly.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve Auto Center Windows.
+
+        Please remove names, serial numbers, file paths, and other personal information from screenshots or logs before attaching them.
+
+  - type: input
+    id: utility-version
+    attributes:
+      label: Auto Center Windows version
+      description: Open the menu-bar icon and choose About Auto Center Windows.
+      placeholder: "1.3.13"
+    validations:
+      required: true
+
+  - type: input
+    id: macos-version
+    attributes:
+      label: macOS version
+      description: Find this under Apple menu > About This Mac.
+      placeholder: "Golden Gate 27.0"
+    validations:
+      required: true
+
+  - type: input
+    id: mac-model
+    attributes:
+      label: Mac model
+      placeholder: "MacBook Neo"
+    validations:
+      required: true
+
+  - type: input
+    id: processor
+    attributes:
+      label: Chip or processor
+      placeholder: "Apple A18 Pro, Apple M4, or Intel Core i7"
+    validations:
+      required: true
+
+  - type: input
+    id: affected-app
+    attributes:
+      label: Affected app and version
+      description: Name the app whose window did not center, if applicable.
+      placeholder: "Google Chrome 140.0"
+
+  - type: dropdown
+    id: accessibility
+    attributes:
+      label: Accessibility status
+      description: This appears in the Auto Center Windows menu.
+      options:
+        - Enabled
+        - Needed
+        - Unsure
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Give a short, clear description of the problem.
+      placeholder: "After opening Chrome, its first window stayed on the right side of the screen."
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: List the exact steps that make the problem happen.
+      placeholder: |
+        1. Quit the affected app.
+        2. Open the app again.
+        3. Observe the first window.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+      placeholder: "The first normal window should open centered on its display."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: frequency
+    attributes:
+      label: How often does it happen?
+      options:
+        - Every time
+        - Often
+        - Sometimes
+        - Once
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra-context
+    attributes:
+      label: Screenshots, logs, or extra context
+      description: Optional. Remove personal information before attaching anything.
+      placeholder: "Add anything else that might help explain the problem."
+
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Before submitting
+      options:
+        - label: I checked that another open issue does not already describe this problem.
+          required: true
+        - label: I removed personal information from screenshots and logs.
+          required: true

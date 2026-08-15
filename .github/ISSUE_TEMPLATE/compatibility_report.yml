@@ -1,0 +1,89 @@
+name: Compatibility / Device Report
+description: Share how Auto Center Windows works on your Mac, macOS version, and tested apps.
+title: "[Compatibility]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for sharing your setup. Reports where everything works are just as useful as reports about problems.
+
+        Do not include your Mac's serial number or other personal information.
+
+  - type: input
+    id: mac-model
+    attributes:
+      label: Mac model
+      placeholder: "MacBook Neo"
+    validations:
+      required: true
+
+  - type: input
+    id: processor
+    attributes:
+      label: Chip or processor
+      placeholder: "Apple A18 Pro, Apple M4, or Intel Core i7"
+    validations:
+      required: true
+
+  - type: input
+    id: macos-version
+    attributes:
+      label: macOS version
+      placeholder: "Golden Gate 27.0"
+    validations:
+      required: true
+
+  - type: input
+    id: utility-version
+    attributes:
+      label: Auto Center Windows version
+      placeholder: "1.3.13"
+    validations:
+      required: true
+
+  - type: textarea
+    id: apps-tested
+    attributes:
+      label: Apps tested
+      description: List each app and version you tried, if known.
+      placeholder: |
+        - Google Chrome 140.0
+        - Finder
+        - Terminal
+    validations:
+      required: true
+
+  - type: dropdown
+    id: result
+    attributes:
+      label: Overall result
+      options:
+        - Works perfectly
+        - Mostly works, with minor issues
+        - Works only with some apps
+        - Does not work
+    validations:
+      required: true
+
+  - type: textarea
+    id: behavior
+    attributes:
+      label: What worked or did not work?
+      description: Mention any apps that behaved differently from the others.
+      placeholder: "New windows centered correctly in every app I tested."
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Extra notes
+      description: Optional. Share any setup details that could help other users.
+
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      options:
+        - label: I did not include a serial number or other personal information.
+          required: true
