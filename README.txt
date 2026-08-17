@@ -1,7 +1,16 @@
-AUTO CENTER WINDOWS 1.3.13 FOR MAC
+AUTO CENTER WINDOWS 1.4.0 FOR MAC
 
-What changed in 1.3.13
+What changed in 1.4.0
 ----------------------
+• Adds an “Add Window…” option for choosing a specific window that is open.
+• Nests added windows beneath their parent apps using disclosure arrows.
+• Gives every added window its own on/off switch and remove button.
+• Allows explicitly added child sheets and dialogs to be centered.
+• Preserves existing app preferences while adding the new window settings.
+• Centers the Manage Apps and About windows on the display where you opened them.
+
+Also included from 1.3.13
+-------------------------
 • Replaces the shell-script launcher with a small native macOS executable.
 • Prevents the startup chain from adding Terminal to Accessibility settings.
 • Keeps the friendly “Auto Center Windows” background-item name and custom icon.
@@ -78,6 +87,7 @@ What it does
 • Centers newly created windows even when the app was already running.
 • Learns each app automatically and enables it by default.
 • Keeps a persistent list with an on/off switch for every learned app.
+• Supports optional per-window overrides nested beneath their parent apps.
 • Keeps windows on the display where they appeared and avoids the menu bar and Dock.
 • Ignores minimized, full-screen, and nonstandard utility windows.
 • Starts automatically when you log in.
@@ -103,8 +113,10 @@ Gatekeeper interruption. The helper is code-signed and checked before launch.
 Turn individual apps on or off
 ------------------------------
 Click the window icon in the menu bar, then choose “Manage Apps…”. Use the
-checkbox list to turn centering on or off for each learned app. You can also double-click
-“Configure Auto Center Windows.command” in this folder.
+checkbox list to turn centering on or off for each learned app. Choose “Add Window…”
+to select a window that is currently open. Added windows appear beneath their parent
+app and override its setting. Use the minus button to remove a window override. You can
+also double-click “Configure Auto Center Windows.command” in this folder.
 
 Choose the clickable “About Auto Center Windows…” menu item for version, running
 status, Accessibility status, learned-app count, and centering mode.
@@ -128,4 +140,5 @@ Troubleshooting
 Privacy
 -------
 Everything runs locally. There is no networking, analytics, or data collection.
-The helper stores only app names, bundle identifiers, and each on/off choice.
+The helper stores only app names, bundle identifiers, each on/off choice, and the names
+and accessibility identifiers of windows you explicitly add.

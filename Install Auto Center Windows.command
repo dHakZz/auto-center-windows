@@ -41,7 +41,7 @@ if [[ ! -f "$APP_ARCHIVE" || ! -f "$LAUNCHER_SOURCE" || ! -f "$PAYLOAD_DIR/com.j
 fi
 
 /bin/mkdir -p "$HOME/Library/Logs"
-/usr/bin/printf '%s Starting Auto Center Windows 1.3.13 installation.\n' "$(/bin/date '+%Y-%m-%d %H:%M:%S')" >> "$INSTALL_LOG"
+/usr/bin/printf '%s Starting Auto Center Windows 1.4.0 installation.\n' "$(/bin/date '+%Y-%m-%d %H:%M:%S')" >> "$INSTALL_LOG"
 trap 'installation_failed $LINENO' ERR
 
 if [[ -L "$INSTALL_DIR" || -L "$LAUNCHER_PATH" || -L "$STATE_PATH" || -L "$PERMISSION_PROMPT_MARKER" || -L "$APP_BUNDLE" || -L "$LEGACY_APP" || -L "$LEGACY_SETTINGS_APP" || -L "$AGENT_PATH" ]]; then
@@ -136,4 +136,4 @@ fi
 
 /usr/bin/printf '%s Installation completed with named background launcher verified running.\n' "$(/bin/date '+%Y-%m-%d %H:%M:%S')" >> "$INSTALL_LOG"
 trap - ERR
-show_message info "Installation complete" "Auto Center Windows 1.3.13 is installed and verified running. Its native launcher keeps Terminal out of Accessibility while preserving the app name and icon. Approve the one-time Accessibility request."
+show_message info "Installation complete" "Auto Center Windows 1.4.0 is installed and verified running. Use Add Window… in Manage Apps to create an override for a specific open window. Approve the one-time Accessibility request."

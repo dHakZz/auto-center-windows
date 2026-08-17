@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.4.0
+
+- Added **Add Window…** for creating an override for a specific open window.
+- Nested added windows beneath their parent apps with disclosure arrows.
+- Added independent switches and remove buttons for per-window rules.
+- Allowed explicitly added child sheets and dialogs to be centered.
+- Preserved existing app preferences through an automatic state-file migration.
+- Centered the **Manage Apps** and **About Auto Center Windows** windows on the display where the menu was opened.
+
 ## 1.3.13
 
 - Replaced the shell launcher with a small universal native macOS executable.

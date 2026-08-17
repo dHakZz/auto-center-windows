@@ -1,4 +1,4 @@
-# Auto Center Windows 1.3.13
+# Auto Center Windows 1.4.0
 
 Auto Center Windows is a lightweight macOS menu-bar utility that automatically centers the first normal window when an app opens and newly created windows afterward.
 
@@ -6,6 +6,9 @@ Auto Center Windows is a lightweight macOS menu-bar utility that automatically c
 
 - Automatically learns apps and enables centering by default.
 - Includes a compact **Manage Apps…** window for per-app control.
+- Adds optional per-window overrides beneath their parent apps.
+- Supports explicitly added child sheets and dialogs.
+- Centers the utility's own **Manage Apps** and **About** windows.
 - Keeps each window on the display where it appeared.
 - Starts automatically at login using a native launcher.
 - Avoids adding Terminal to Accessibility settings.
@@ -14,7 +17,7 @@ Auto Center Windows is a lightweight macOS menu-bar utility that automatically c
 
 ## Installation
 
-1. Download `Auto-Center-Windows-v1.3.13.zip` and unzip it.
+1. Download `Auto-Center-Windows-v1.4.0.zip` and unzip it.
 2. Double-click **Install Auto Center Windows.command**.
 3. Enable **Auto Center Windows** when macOS opens Accessibility settings.
 

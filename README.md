@@ -16,6 +16,8 @@ Auto Center Windows centers the first normal window when an app opens and center
 - Avoids the menu bar and Dock
 - Ignores minimized, full-screen, and nonstandard utility windows
 - Remembers which apps should or should not be centered
+- Adds optional per-window overrides beneath their parent apps
+- Supports explicitly added child sheets and dialogs
 - Starts automatically when you log in
 - Uses only built-in macOS frameworks—no Hammerspoon or other dependencies
 - Runs entirely on your Mac with no networking, analytics, or data collection
@@ -40,6 +42,8 @@ If macOS blocks the installer, Control-click it, choose **Open**, then click **O
 
 Click the centered-window icon in the menu bar and choose **Manage Apps…**. Checked apps are centered; unchecked apps keep their own window placement.
 
+Choose **Add Window…** to select a window that is currently open. Added windows appear beneath their parent app behind a disclosure arrow. Their individual switches override the app switch, and the minus button removes an override. This also lets you opt in child sheets and dialogs that the app normally ignores.
+
 The list starts empty and fills automatically as you open apps or create windows.
 
 ## Why Accessibility permission is required
@@ -51,18 +55,28 @@ The only saved information is:
 - App names
 - Bundle identifiers
 - Your on/off choice for each app
+- Names and accessibility identifiers for windows you explicitly add
 
 ## Compatibility
 
 - macOS 13 Ventura or later
 - Apple silicon and Intel Macs
-- Version 1.3.13
+- Version 1.4.0
 
 Some apps deliberately prevent accessibility tools from moving their windows, so an occasional app may not center.
 
 ## Uninstall
 
 Double-click **Uninstall Auto Center Windows.command** and confirm. No administrator password is needed. The uninstaller removes the app, startup item, learned-app list, logs, and Accessibility permission entry.
+
+## Report a problem or share compatibility
+
+Open the [GitHub issue page](https://github.com/dHakZz/auto-center-windows/issues/new/choose) and choose the form that fits:
+
+- **Report a Bug** for something that is not working as expected
+- **Compatibility / Device Report** to share your Mac model, macOS version, utility version, and tested apps—even when everything works perfectly
+
+Before attaching a screenshot or log, remove serial numbers, names, file paths, and other personal information.
 
 ## Troubleshooting
 
