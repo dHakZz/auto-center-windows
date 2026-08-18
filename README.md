@@ -42,7 +42,7 @@ If macOS blocks the installer, Control-click it, choose **Open**, then click **O
 
 Click the centered-window icon in the menu bar and choose **Manage Apps…**. Checked apps are centered; unchecked apps keep their own window placement.
 
-Choose **Add Window…** to select a window that is currently open. Added windows appear beneath their parent app behind a disclosure arrow. Their individual switches override the app switch, and the minus button removes an override. This also lets you opt in child sheets and dialogs that the app normally ignores.
+Choose **Add Window…** to select a window that is currently open. Focused child dialogs—such as Xcode's Downloads panel—are included even when the app does not expose them in its ordinary window list. Added windows appear beneath their parent app behind a clean disclosure chevron. Their individual switches override the app switch, and the minus button removes an override.
 
 The list starts empty and fills automatically as you open apps or create windows.
 
@@ -61,7 +61,7 @@ The only saved information is:
 
 - macOS 13 Ventura or later
 - Apple silicon and Intel Macs
-- Version 1.4.0
+- Version 1.4.1
 
 Some apps deliberately prevent accessibility tools from moving their windows, so an occasional app may not center.
 

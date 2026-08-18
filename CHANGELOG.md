@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.4.1
+
+- Included focused and main child dialogs in **Add Window…**, including Xcode's Downloads panel.
+- Remembered recently focused child dialogs briefly so they remain selectable after opening Manage Apps.
+- Centered enabled specific-window rules immediately after saving Manage Apps.
+- Watched focused child-window changes so reopened dialogs can be centered even when an app reuses them.
+- Split the Manage Apps explanation across two readable lines.
+- Replaced the nested-window disclosure controls with clean borderless chevrons.
+
 ## 1.4.0
 
 - Added **Add Window…** for creating an override for a specific open window.

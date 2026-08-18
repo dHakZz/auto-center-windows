@@ -1,9 +1,18 @@
-AUTO CENTER WINDOWS 1.4.0 FOR MAC
+AUTO CENTER WINDOWS 1.4.1 FOR MAC
 
-What changed in 1.4.0
+What changed in 1.4.1
 ----------------------
+• Finds focused child dialogs such as Xcode’s Downloads panel in “Add Window…”.
+• Remembers a recently focused child dialog briefly after you open Manage Apps.
+• Centers an enabled specific window immediately after you save Manage Apps.
+• Watches reused child dialogs so they can be centered when shown again.
+• Uses clean chevrons to expand and collapse added windows beneath an app.
+• Places the Manage Apps explanation on two fully readable lines.
+
+Also included from 1.4.0
+------------------------
 • Adds an “Add Window…” option for choosing a specific window that is open.
-• Nests added windows beneath their parent apps using disclosure arrows.
+• Nests added windows beneath their parent apps.
 • Gives every added window its own on/off switch and remove button.
 • Allows explicitly added child sheets and dialogs to be centered.
 • Preserves existing app preferences while adding the new window settings.
