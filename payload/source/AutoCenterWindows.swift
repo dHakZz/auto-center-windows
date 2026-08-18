@@ -156,7 +156,14 @@ private func isWindowLikeRole(_ role: String) -> Bool {
 private func accessibleWindows(_ application: AXUIElement) -> [AXUIElement] {
     let topLevel: [AXUIElement] = axAttribute(application, kAXWindowsAttribute as CFString) ?? []
     var result: [AXUIElement] = []
-    var queue = topLevel
+    var queue: [AXUIElement] = []
+    if let focused: AXUIElement = axAttribute(application, kAXFocusedWindowAttribute as CFString) {
+        queue.append(focused)
+    }
+    if let main: AXUIElement = axAttribute(application, kAXMainWindowAttribute as CFString) {
+        queue.append(main)
+    }
+    queue.append(contentsOf: topLevel)
     var seen: Set<CFHashCode> = []
 
     while !queue.isEmpty, result.count < 100 {
@@ -216,8 +223,13 @@ private func axObserverCallback(
 ) {
     guard let refcon else { return }
     let owner = Unmanaged<AppDelegate>.fromOpaque(refcon).takeUnretainedValue()
+    let focusedWindowChanged = CFEqual(notification, kAXFocusedWindowChangedNotification as CFString)
     DispatchQueue.main.async {
-        owner.handleCreatedWindow(element)
+        if focusedWindowChanged {
+            owner.handleFocusedWindowChanged(element)
+        } else {
+            owner.handleCreatedWindow(element)
+        }
     }
 }
 
@@ -240,6 +252,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
     private var settingsControls: [String: NSButton] = [:]
     private var settingsWindowControls: [String: [String: NSButton]] = [:]
     private var expandedAppKeys: Set<String> = []
+    private var recentlyFocusedWindows: [String: (identity: WindowIdentity, observedAt: Date)] = [:]
 
     override init() {
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -403,6 +416,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
         }
         pendingPIDs.remove(pid)
         lastCenteredAt.removeValue(forKey: pid)
+        recentlyFocusedWindows.removeValue(forKey: preferenceKey(for: app))
     }
 
     private func observeAllRunningApps() {
@@ -418,6 +432,25 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
         }
     }
 
+    private func centerVisibleExplicitWindows() {
+        guard AXIsProcessTrusted() else { return }
+        for app in workspace.runningApplications where isManageable(app) {
+            let appKey = preferenceKey(for: app)
+            guard let preference = preferences[appKey],
+                  preference.windows.values.contains(where: \.enabled)
+            else { continue }
+
+            let application = AXUIElementCreateApplication(app.processIdentifier)
+            for window in accessibleWindows(application) {
+                let identity = windowIdentity(window)
+                guard preference.windows[identity.key]?.enabled == true
+                        || preference.windows.values.contains(where: { $0.enabled && $0.matches(identity) })
+                else { continue }
+                _ = center(window: window, for: app)
+            }
+        }
+    }
+
     private func observe(_ app: NSRunningApplication) {
         let pid = app.processIdentifier
         guard observers[pid] == nil, AXIsProcessTrusted() else { return }
@@ -426,8 +459,34 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
         let appElement = AXUIElementCreateApplication(pid)
         let refcon = Unmanaged.passUnretained(self).toOpaque()
         guard AXObserverAddNotification(observer, appElement, kAXWindowCreatedNotification as CFString, refcon) == .success else { return }
+        _ = AXObserverAddNotification(observer, appElement, kAXFocusedWindowChangedNotification as CFString, refcon)
         CFRunLoopAddSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(observer), .defaultMode)
         observers[pid] = observer
+    }
+
+    func handleFocusedWindowChanged(_ element: AXUIElement) {
+        var pid: pid_t = 0
+        guard AXUIElementGetPid(element, &pid) == .success,
+              let app = NSRunningApplication(processIdentifier: pid),
+              isManageable(app)
+        else { return }
+
+        let application = AXUIElementCreateApplication(pid)
+        guard let focused: AXUIElement = axAttribute(application, kAXFocusedWindowAttribute as CFString) else { return }
+        let identity = windowIdentity(focused)
+        guard isWindowLikeRole(identity.role) else { return }
+
+        let appKey = ensurePreference(for: app)
+        recentlyFocusedWindows[appKey] = (identity, Date())
+        guard let preference = preferences[appKey],
+              preference.windows.values.contains(where: \.enabled)
+        else { return }
+
+        guard preference.windows[identity.key]?.enabled == true
+                || preference.windows.values.contains(where: { $0.enabled && $0.matches(identity) })
+        else { return }
+
+        scheduleCenter(window: focused, pid: pid, attempts: 3)
     }
 
     func handleCreatedWindow(_ window: AXUIElement) {
@@ -812,12 +871,13 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
         imageView.imageScaling = .scaleProportionallyUpOrDown
         content.addSubview(imageView)
 
-        content.addSubview(infoText("Manage Apps", frame: NSRect(x: 15, y: 310, width: 250, height: 30), size: 20, weight: .bold, alignment: .center))
-        content.addSubview(infoText("Apps set the default. Added windows override it.", frame: NSRect(x: 15, y: 284, width: 250, height: 18), size: 10.5, weight: .regular, alignment: .center, color: .secondaryLabelColor))
-        content.addSubview(infoText("\(sorted.count) apps • \(windowRuleCount) added windows", frame: NSRect(x: 15, y: 264, width: 250, height: 16), size: 10.5, weight: .regular, alignment: .center, color: .tertiaryLabelColor))
+        content.addSubview(infoText("Manage Apps", frame: NSRect(x: 15, y: 313, width: 250, height: 30), size: 20, weight: .bold, alignment: .center))
+        content.addSubview(infoText("Choose which apps should be centered.", frame: NSRect(x: 15, y: 290, width: 250, height: 17), size: 10.5, weight: .regular, alignment: .center, color: .secondaryLabelColor))
+        content.addSubview(infoText("Control specific windows separately.", frame: NSRect(x: 15, y: 273, width: 250, height: 17), size: 10.5, weight: .regular, alignment: .center, color: .secondaryLabelColor))
+        content.addSubview(infoText("\(sorted.count) apps • \(windowRuleCount) added windows", frame: NSRect(x: 15, y: 254, width: 250, height: 16), size: 10.5, weight: .regular, alignment: .center, color: .tertiaryLabelColor))
 
         let addWindowButton = NSButton(title: "Add Window…", target: self, action: #selector(addWindowRule))
-        addWindowButton.frame = NSRect(x: 85, y: 231, width: 110, height: 28)
+        addWindowButton.frame = NSRect(x: 85, y: 226, width: 110, height: 28)
         addWindowButton.bezelStyle = .rounded
         addWindowButton.controlSize = .small
         addWindowButton.font = NSFont.systemFont(ofSize: 11.5, weight: .regular)
@@ -857,9 +917,12 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
                 if hasWindowRules {
                     let disclosure = PreferenceButton(frame: NSRect(x: 4, y: rowY + 2, width: 20, height: 20))
                     disclosure.appKey = pair.key
-                    disclosure.bezelStyle = .disclosure
-                    disclosure.setButtonType(.onOff)
-                    disclosure.state = expandedAppKeys.contains(pair.key) ? .on : .off
+                    disclosure.image = NSImage(
+                        systemSymbolName: expandedAppKeys.contains(pair.key) ? "chevron.down" : "chevron.right",
+                        accessibilityDescription: expandedAppKeys.contains(pair.key) ? "Collapse added windows" : "Expand added windows"
+                    )?.withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: 10, weight: .semibold))
+                    disclosure.isBordered = false
+                    disclosure.contentTintColor = .secondaryLabelColor
                     disclosure.target = self
                     disclosure.action = #selector(toggleAppDisclosure(_:))
                     disclosure.toolTip = expandedAppKeys.contains(pair.key) ? "Hide added windows" : "Show added windows"
@@ -987,16 +1050,23 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
             let preference = settingsDraft[appKey] ?? AppPreference(name: appName, bundleID: bundleID, enabled: true)
             let appElement = AXUIElementCreateApplication(app.processIdentifier)
 
-            for window in accessibleWindows(appElement) {
-                let identity = windowIdentity(window)
-                guard isWindowLikeRole(identity.role) else { continue }
+            func addChoice(_ identity: WindowIdentity) {
+                guard isWindowLikeRole(identity.role) else { return }
                 let uniqueKey = appKey + "|" + identity.key
                 guard !seen.contains(uniqueKey),
                       preference.windows[identity.key] == nil,
                       !preference.windows.values.contains(where: { $0.matches(identity) })
-                else { continue }
+                else { return }
                 seen.insert(uniqueKey)
                 choices.append(WindowChoice(appKey: appKey, appName: appName, bundleID: bundleID, identity: identity))
+            }
+
+            for window in accessibleWindows(appElement) {
+                addChoice(windowIdentity(window))
+            }
+            if let recent = recentlyFocusedWindows[appKey],
+               Date().timeIntervalSince(recent.observedAt) < 600 {
+                addChoice(recent.identity)
             }
         }
 
@@ -1071,6 +1141,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
         preferences = settingsDraft
         savePreferences()
         cancelSettingsWindow()
+        centerVisibleExplicitWindows()
     }
 
     @objc private func cancelSettingsWindow() {
