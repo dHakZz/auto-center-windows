@@ -112,7 +112,7 @@ The Swift source for the menu-bar utility and the C source for its native launch
 To create the same universal Apple-silicon/Intel release locally, run:
 
 ```sh
-./scripts/build-release.sh 1.5.0 160
+/bin/zsh ./scripts/build-release.sh 1.5.0 160
 ```
 
 GitHub Actions runs the same build and uploads the verified ZIP as a workflow artifact.
