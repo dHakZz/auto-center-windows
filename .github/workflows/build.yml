@@ -27,7 +27,7 @@ jobs:
           fi
 
       - name: Build universal release
-        run: ./scripts/build-release.sh "${{ steps.version.outputs.value }}" "$GITHUB_RUN_NUMBER"
+        run: /bin/zsh ./scripts/build-release.sh "${{ steps.version.outputs.value }}" "$GITHUB_RUN_NUMBER"
 
       - name: Upload verified package
         uses: actions/upload-artifact@v7
