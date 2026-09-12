@@ -14,7 +14,7 @@ body:
     attributes:
       label: Auto Center Windows version
       description: Open the menu-bar icon and choose About Auto Center Windows.
-      placeholder: "1.3.13"
+      placeholder: "1.5.0"
     validations:
       required: true
 
