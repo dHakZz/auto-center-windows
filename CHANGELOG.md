@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.5.0
+
+- Added 15-minute, 1-hour, and indefinite pause options to the menu-bar menu.
+- Automatically resumed centering when a timed pause ended.
+- Remembered an active pause across app and Mac restarts.
+- Dimmed the menu-bar icon while paused and updated its tooltip.
+- Continued learning apps and windows while paused without moving them.
+- Displayed **Paused** in the About window.
+- Added **Center Front Window Now** with a global **Control–Option–C** shortcut.
+- Added settings export and import for app and window choices.
+- Added an MIT license and reproducible local/GitHub release builds.
+
 ## 1.4.1
 
 - Included focused and main child dialogs in **Add Window…**, including Xcode's Downloads panel.

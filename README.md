@@ -16,6 +16,9 @@ Auto Center Windows centers the first normal window when an app opens and center
 - Avoids the menu bar and Dock
 - Ignores minimized, full-screen, and nonstandard utility windows
 - Remembers which apps should or should not be centered
+- Can pause for 15 minutes, 1 hour, or until manually resumed
+- Centers the front window on demand with **Control–Option–C**
+- Exports and imports app and window choices
 - Adds optional per-window overrides beneath their parent apps
 - Supports explicitly added child sheets and dialogs
 - Starts automatically when you log in
@@ -46,9 +49,21 @@ Choose **Add Window…** to select a window that is currently open. Focused chil
 
 The list starts empty and fills automatically as you open apps or create windows.
 
+## Pause and resume
+
+Open the menu-bar icon and choose **Pause Auto Centering**, then select 15 minutes, 1 hour, or until you resume. The icon dims while paused, and a timed pause resumes automatically. Your app choices remain unchanged, and the pause survives a restart when necessary.
+
+## Center the front window now
+
+Press **Control–Option–C** or choose **Center Front Window Now** to center the window you are currently using. This manual command works even while automatic centering is paused or disabled for that app.
+
+## Back up or move settings
+
+Open **Settings** in the menu-bar menu to export or import your app and window choices. Importing replaces choices for matching apps while keeping other apps already learned on that Mac.
+
 ## Why Accessibility permission is required
 
-macOS requires Accessibility permission before one app can reposition another app's windows. Auto Center Windows uses that access only to identify and move eligible windows. It does not record keystrokes, inspect documents, or send information anywhere.
+macOS requires Accessibility permission before one app can reposition another app's windows. Auto Center Windows uses that access only to identify and move eligible windows. It registers only the exact **Control–Option–C** shortcut; it does not monitor typing, inspect documents, or send information anywhere.
 
 The only saved information is:
 
@@ -61,7 +76,7 @@ The only saved information is:
 
 - macOS 13 Ventura or later
 - Apple silicon and Intel Macs
-- Version 1.4.1
+- Version 1.5.0
 
 Some apps deliberately prevent accessibility tools from moving their windows, so an occasional app may not center.
 
@@ -94,6 +109,14 @@ Auto Center Windows has no network code, analytics, advertising, accounts, or cl
 
 The Swift source for the menu-bar utility and the C source for its native launcher are included under [`payload/source`](payload/source). The packaged release binaries are included so the one-click installer works without developer tools.
 
-## Copyright
+To create the same universal Apple-silicon/Intel release locally, run:
 
-Copyright © 2026 Justin Chacon. All rights reserved.
+```sh
+./scripts/build-release.sh 1.5.0 160
+```
+
+GitHub Actions runs the same build and uploads the verified ZIP as a workflow artifact.
+
+## License
+
+Licensed under the [MIT License](LICENSE). Copyright © 2026 Justin Chacon.

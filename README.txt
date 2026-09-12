@@ -1,7 +1,18 @@
-AUTO CENTER WINDOWS 1.4.1 FOR MAC
+AUTO CENTER WINDOWS 1.5.0 FOR MAC
 
-What changed in 1.4.1
+What changed in 1.5.0
 ----------------------
+• Pauses automatic centering for 15 minutes, 1 hour, or until you resume.
+• Automatically resumes when a timed pause ends.
+• Remembers an active pause across app and Mac restarts.
+• Dims the menu-bar icon and shows “Paused” in About while paused.
+• Keeps learning apps and windows while paused without moving them.
+• Centers the front window at any time with Control–Option–C.
+• Exports and imports app and window choices from the Settings submenu.
+• Adds an MIT license and a repeatable Apple silicon/Intel build process.
+
+Also included from 1.4.1
+------------------------
 • Finds focused child dialogs such as Xcode’s Downloads panel in “Add Window…”.
 • Remembers a recently focused child dialog briefly after you open Manage Apps.
 • Centers an enabled specific window immediately after you save Manage Apps.
@@ -132,6 +143,22 @@ status, Accessibility status, learned-app count, and centering mode.
 
 The list begins empty. Apps are added when they launch or create a new window.
 
+Pause all automatic centering
+-----------------------------
+Open the menu-bar icon and choose “Pause Auto Centering”, then choose 15 minutes,
+1 hour, or until you resume. The icon dims while paused. A timed pause resumes
+automatically, and pausing does not change your app or window choices.
+
+Center the front window now
+---------------------------
+Press Control–Option–C or choose “Center Front Window Now”. This manual command
+works even while automatic centering is paused or turned off for that app.
+
+Back up or move settings
+------------------------
+Open the Settings submenu and choose “Export Settings…” or “Import Settings…”.
+An import updates matching apps while keeping other apps already learned on the Mac.
+
 Uninstall
 ---------
 Double-click “Uninstall Auto Center Windows.command” and confirm. No administrator
@@ -150,4 +177,10 @@ Privacy
 -------
 Everything runs locally. There is no networking, analytics, or data collection.
 The helper stores only app names, bundle identifiers, each on/off choice, and the names
-and accessibility identifiers of windows you explicitly add.
+and accessibility identifiers of windows you explicitly add. It registers only the
+Control–Option–C shortcut and does not monitor typing.
+
+License
+-------
+Auto Center Windows is available under the MIT License.
+Copyright © 2026 Justin Chacon.

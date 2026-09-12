@@ -53,6 +53,8 @@ if [[ -e "$LEGACY_SETTINGS_APP" ]]; then
 fi
 
 /bin/rm -f -- "$LAUNCHER_PATH" "$STATE_PATH" "$PERMISSION_PROMPT_MARKER" "$LEGACY_CONFIG_PATH" "$AGENT_PATH" "$OUT_LOG" "$ERROR_LOG" "$INSTALL_LOG"
+/usr/bin/defaults delete "$LABEL" centeringPaused >/dev/null 2>&1 || true
+/usr/bin/defaults delete "$LABEL" centeringPauseUntil >/dev/null 2>&1 || true
 /bin/rmdir "$INSTALL_DIR" 2>/dev/null || true
 /usr/bin/tccutil reset Accessibility "$LABEL" >/dev/null 2>&1 || true
 /usr/bin/tccutil reset AppleEvents "$LABEL" >/dev/null 2>&1 || true
