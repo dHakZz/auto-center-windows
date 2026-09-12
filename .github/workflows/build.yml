@@ -1,0 +1,36 @@
+name: Build and verify
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Choose version
+        id: version
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=1.5.0" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build universal release
+        run: ./scripts/build-release.sh "${{ steps.version.outputs.value }}" "$GITHUB_RUN_NUMBER"
+
+      - name: Upload verified package
+        uses: actions/upload-artifact@v7
+        with:
+          name: Auto-Center-Windows-${{ steps.version.outputs.value }}
+          path: build/Auto-Center-Windows-v${{ steps.version.outputs.value }}.zip
