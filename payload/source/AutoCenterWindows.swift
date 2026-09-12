@@ -1,10 +1,16 @@
 import AppKit
 import ApplicationServices
+import Carbon.HIToolbox
 import Foundation
+import UniformTypeIdentifiers
 
 private let watcherBundleID = "com.justin.auto-center-windows"
 private let showSettingsNotification = Notification.Name("com.justin.auto-center-windows.show-settings")
 private let autoCenterSymbolName = "inset.filled.center.rectangle"
+private let pausedDefaultsKey = "centeringPaused"
+private let pauseUntilDefaultsKey = "centeringPauseUntil"
+private let manualCenterHotKeySignature: OSType = 0x41435743 // "ACWC"
+private let manualCenterHotKeyIdentifier: UInt32 = 1
 
 private struct WindowPreference: Codable {
     var name: String
@@ -63,6 +69,11 @@ private struct AppPreference: Codable {
     }
 }
 
+private struct PreferencesExport: Codable {
+    let formatVersion: Int
+    let apps: [String: AppPreference]
+}
+
 private struct WindowIdentity {
     let title: String
     let identifier: String
@@ -115,7 +126,7 @@ private final class WindowChoice: NSObject {
     }
 }
 
-private enum CenterAttempt {
+private enum CenterAttempt: Equatable {
     case centered
     case explicitlyDisabled
     case disabledByApp
@@ -233,6 +244,19 @@ private func axObserverCallback(
     }
 }
 
+private func manualCenterHotKeyHandler(
+    _ nextHandler: EventHandlerCallRef?,
+    _ event: EventRef?,
+    _ userData: UnsafeMutableRawPointer?
+) -> OSStatus {
+    guard let userData else { return noErr }
+    let owner = Unmanaged<AppDelegate>.fromOpaque(userData).takeUnretainedValue()
+    DispatchQueue.main.async {
+        owner.centerFrontWindow()
+    }
+    return noErr
+}
+
 private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private let menu = NSMenu()
@@ -245,7 +269,13 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
     private var pendingPIDs: Set<pid_t> = []
     private var lastCenteredAt: [pid_t: Date] = [:]
     private var pollTimer: Timer?
+    private var pauseTimer: Timer?
     private var wasAccessibilityTrusted = false
+    private var isPaused = false
+    private var pauseUntil: Date?
+    private var lastActiveAppPID: pid_t?
+    private var manualCenterHotKey: EventHotKeyRef?
+    private var manualCenterHotKeyHandlerRef: EventHandlerRef?
     private var aboutWindow: NSWindow?
     private var settingsWindow: NSWindow?
     private var settingsDraft: [String: AppPreference] = [:]
@@ -264,9 +294,14 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         loadPreferences()
+        loadPauseState()
         configureApplicationIcon()
         configureStatusItem()
         registerNotifications()
+        registerManualCenterHotKey()
+        if let frontmost = workspace.frontmostApplication, isManageable(frontmost) {
+            lastActiveAppPID = frontmost.processIdentifier
+        }
         knownWindowIDs = Set(windowSnapshots().map(\.id))
         wasAccessibilityTrusted = AXIsProcessTrusted()
         requestAccessibilityIfNeeded()
@@ -293,8 +328,11 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
 
     func applicationWillTerminate(_ notification: Notification) {
         pollTimer?.invalidate()
+        pauseTimer?.invalidate()
         DistributedNotificationCenter.default().removeObserver(self)
         workspace.notificationCenter.removeObserver(self)
+        if let manualCenterHotKey { UnregisterEventHotKey(manualCenterHotKey) }
+        if let manualCenterHotKeyHandlerRef { RemoveEventHandler(manualCenterHotKeyHandlerRef) }
         for observer in observers.values {
             CFRunLoopRemoveSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(observer), .defaultMode)
         }
@@ -305,10 +343,16 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
             button.image = NSImage(systemSymbolName: autoCenterSymbolName, accessibilityDescription: "Auto Center Windows")
             button.image?.isTemplate = true
             if button.image == nil { button.title = "⌗" }
-            button.toolTip = "Auto Center Windows"
         }
+        updateStatusItemAppearance()
         menu.delegate = self
         statusItem.menu = menu
+    }
+
+    private func updateStatusItemAppearance() {
+        guard let button = statusItem.button else { return }
+        button.alphaValue = isPaused ? 0.45 : 1.0
+        button.toolTip = isPaused ? "Auto Center Windows — Paused" : "Auto Center Windows"
     }
 
     private func registerNotifications() {
@@ -324,12 +368,53 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
             name: NSWorkspace.didTerminateApplicationNotification,
             object: nil
         )
+        workspace.notificationCenter.addObserver(
+            self,
+            selector: #selector(applicationActivated(_:)),
+            name: NSWorkspace.didActivateApplicationNotification,
+            object: nil
+        )
         DistributedNotificationCenter.default().addObserver(
             self,
             selector: #selector(showSettingsFromNotification(_:)),
             name: showSettingsNotification,
             object: nil
         )
+    }
+
+    private func registerManualCenterHotKey() {
+        var eventType = EventTypeSpec(
+            eventClass: OSType(kEventClassKeyboard),
+            eventKind: UInt32(kEventHotKeyPressed)
+        )
+        let refcon = Unmanaged.passUnretained(self).toOpaque()
+        guard InstallEventHandler(
+            GetApplicationEventTarget(),
+            manualCenterHotKeyHandler,
+            1,
+            &eventType,
+            refcon,
+            &manualCenterHotKeyHandlerRef
+        ) == noErr else {
+            fputs("Could not install the manual-center shortcut handler.\n", stderr)
+            return
+        }
+
+        let hotKeyID = EventHotKeyID(
+            signature: manualCenterHotKeySignature,
+            id: manualCenterHotKeyIdentifier
+        )
+        let modifiers = UInt32(controlKey | optionKey)
+        if RegisterEventHotKey(
+            UInt32(kVK_ANSI_C),
+            modifiers,
+            hotKeyID,
+            GetApplicationEventTarget(),
+            0,
+            &manualCenterHotKey
+        ) != noErr {
+            fputs("Could not register Control-Option-C as the manual-center shortcut.\n", stderr)
+        }
     }
 
     private func requestAccessibilityIfNeeded() {
@@ -408,6 +493,13 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
         }
     }
 
+    @objc private func applicationActivated(_ notification: Notification) {
+        guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
+              isManageable(app)
+        else { return }
+        lastActiveAppPID = app.processIdentifier
+    }
+
     @objc private func applicationTerminated(_ notification: Notification) {
         guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication else { return }
         let pid = app.processIdentifier
@@ -424,7 +516,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
     }
 
     private func centerKnownEnabledRunningApps() {
-        guard AXIsProcessTrusted() else { return }
+        guard !isPaused, AXIsProcessTrusted() else { return }
         for app in workspace.runningApplications where isManageable(app) {
             guard hasEnabledCentering(for: app) else { continue }
             observe(app)
@@ -433,7 +525,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
     }
 
     private func centerVisibleExplicitWindows() {
-        guard AXIsProcessTrusted() else { return }
+        guard !isPaused, AXIsProcessTrusted() else { return }
         for app in workspace.runningApplications where isManageable(app) {
             let appKey = preferenceKey(for: app)
             guard let preference = preferences[appKey],
@@ -510,9 +602,10 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
     }
 
     private func scheduleCenter(window: AXUIElement, pid: pid_t, attempts: Int) {
-        guard attempts > 0 else { return }
+        guard !isPaused, attempts > 0 else { return }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in
             guard let self,
+                  !self.isPaused,
                   let app = NSRunningApplication(processIdentifier: pid),
                   self.isManageable(app)
             else { return }
@@ -528,9 +621,10 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
     }
 
     private func scheduleCenterBestWindow(pid: pid_t, attempts: Int) {
-        guard attempts > 0 else { return }
+        guard !isPaused, attempts > 0 else { return }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in
             guard let self,
+                  !self.isPaused,
                   let app = NSRunningApplication(processIdentifier: pid),
                   self.isManageable(app),
                   self.hasEnabledCentering(for: app)
@@ -547,6 +641,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
     }
 
     private func centerBestWindow(pid: pid_t, app: NSRunningApplication) -> CenterSearchResult {
+        guard !isPaused else { return .done }
         guard AXIsProcessTrusted() else { return .retry }
         let application = AXUIElementCreateApplication(pid)
         var candidates: [AXUIElement] = []
@@ -577,6 +672,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
     }
 
     private func center(window: AXUIElement, for app: NSRunningApplication) -> CenterAttempt {
+        guard !isPaused else { return .ineligible }
         guard AXIsProcessTrusted() else { return .failed }
         let appKey = ensurePreference(for: app)
         guard let preference = preferences[appKey] else { return .failed }
@@ -592,6 +688,13 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
                   identity.subrole == kAXStandardWindowSubrole
             else { return .ineligible }
         }
+
+        return moveWindowToCenter(window)
+    }
+
+    private func moveWindowToCenter(_ window: AXUIElement) -> CenterAttempt {
+        let identity = windowIdentity(window)
+        guard isWindowLikeRole(identity.role) else { return .ineligible }
 
         if let minimized: NSNumber = axAttribute(window, kAXMinimizedAttribute as CFString), minimized.boolValue { return .ineligible }
         if let fullscreen: NSNumber = axAttribute(window, "AXFullScreen" as CFString), fullscreen.boolValue { return .ineligible }
@@ -614,6 +717,40 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
         newPosition.y.round()
         guard let newValue = AXValueCreate(.cgPoint, &newPosition) else { return .failed }
         return AXUIElementSetAttributeValue(window, kAXPositionAttribute as CFString, newValue) == .success ? .centered : .failed
+    }
+
+    @objc func centerFrontWindow() {
+        guard AXIsProcessTrusted() else {
+            NSSound.beep()
+            return
+        }
+
+        let rememberedApp = lastActiveAppPID.flatMap(NSRunningApplication.init(processIdentifier:))
+        let app = rememberedApp.flatMap { isManageable($0) ? $0 : nil }
+            ?? workspace.frontmostApplication.flatMap { isManageable($0) ? $0 : nil }
+        guard let app else {
+            NSSound.beep()
+            return
+        }
+
+        let application = AXUIElementCreateApplication(app.processIdentifier)
+        var candidates: [AXUIElement] = []
+        if let focused: AXUIElement = axAttribute(application, kAXFocusedWindowAttribute as CFString) {
+            candidates.append(focused)
+        }
+        if let main: AXUIElement = axAttribute(application, kAXMainWindowAttribute as CFString) {
+            candidates.append(main)
+        }
+        candidates.append(contentsOf: accessibleWindows(application))
+
+        var seen: Set<CFHashCode> = []
+        for window in candidates where seen.insert(CFHash(window)).inserted {
+            if moveWindowToCenter(window) == .centered {
+                lastCenteredAt[app.processIdentifier] = Date()
+                return
+            }
+        }
+        NSSound.beep()
     }
 
     private func isManageable(_ app: NSRunningApplication) -> Bool {
@@ -677,15 +814,62 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) {
+        refreshExpiredPause()
         rebuildMenu()
     }
 
     private func rebuildMenu() {
         menu.removeAllItems()
+        if isPaused {
+            let resumeItem = NSMenuItem(title: "Resume Auto Centering", action: #selector(resumeAutoCentering), keyEquivalent: "p")
+            resumeItem.target = self
+            menu.addItem(resumeItem)
+
+            let statusItem = NSMenuItem(title: pauseDescription, action: nil, keyEquivalent: "")
+            statusItem.isEnabled = false
+            menu.addItem(statusItem)
+        } else {
+            let pauseItem = NSMenuItem(title: "Pause Auto Centering", action: nil, keyEquivalent: "")
+            let pauseMenu = NSMenu(title: "Pause Auto Centering")
+
+            let fifteenMinutes = NSMenuItem(title: "For 15 Minutes", action: #selector(pauseForDuration(_:)), keyEquivalent: "")
+            fifteenMinutes.tag = 15 * 60
+            fifteenMinutes.target = self
+            pauseMenu.addItem(fifteenMinutes)
+
+            let oneHour = NSMenuItem(title: "For 1 Hour", action: #selector(pauseForDuration(_:)), keyEquivalent: "")
+            oneHour.tag = 60 * 60
+            oneHour.target = self
+            pauseMenu.addItem(oneHour)
+
+            let untilResumed = NSMenuItem(title: "Until I Resume", action: #selector(pauseUntilResumed), keyEquivalent: "p")
+            untilResumed.target = self
+            pauseMenu.addItem(untilResumed)
+
+            pauseItem.submenu = pauseMenu
+            menu.addItem(pauseItem)
+        }
+        menu.addItem(.separator())
+
+        let centerNowItem = NSMenuItem(title: "Center Front Window Now", action: #selector(centerFrontWindow), keyEquivalent: "c")
+        centerNowItem.keyEquivalentModifierMask = [.control, .option]
+        centerNowItem.isEnabled = AXIsProcessTrusted() && lastActiveAppPID != nil
+        centerNowItem.target = self
+        menu.addItem(centerNowItem)
+        menu.addItem(.separator())
+
         let status = NSMenuItem(title: AXIsProcessTrusted() ? "Accessibility: Enabled" : "Accessibility: Needed", action: nil, keyEquivalent: "")
         status.isEnabled = false
         menu.addItem(status)
         menu.addItem(withTitle: "Manage Apps…", action: #selector(showSettings), keyEquivalent: ",").target = self
+
+        let transferItem = NSMenuItem(title: "Settings", action: nil, keyEquivalent: "")
+        let transferMenu = NSMenu(title: "Settings")
+        transferMenu.addItem(withTitle: "Export Settings…", action: #selector(exportSettings), keyEquivalent: "").target = self
+        transferMenu.addItem(withTitle: "Import Settings…", action: #selector(importSettings), keyEquivalent: "").target = self
+        transferItem.submenu = transferMenu
+        menu.addItem(transferItem)
+
         if !AXIsProcessTrusted() {
             menu.addItem(withTitle: "Open Accessibility Settings…", action: #selector(openAccessibilitySettings), keyEquivalent: "").target = self
         }
@@ -700,6 +884,147 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
         let versionItem = NSMenuItem(title: "About Auto Center Windows", action: #selector(showAbout), keyEquivalent: "")
         versionItem.target = self
         menu.addItem(versionItem)
+    }
+
+    private var pauseDescription: String {
+        guard let pauseUntil else { return "Paused until you resume" }
+        let formatter = DateFormatter()
+        formatter.dateStyle = .none
+        formatter.timeStyle = .short
+        return "Paused until \(formatter.string(from: pauseUntil))"
+    }
+
+    private func loadPauseState() {
+        let defaults = UserDefaults.standard
+        isPaused = defaults.bool(forKey: pausedDefaultsKey)
+        let timestamp = defaults.double(forKey: pauseUntilDefaultsKey)
+        pauseUntil = timestamp > 0 ? Date(timeIntervalSince1970: timestamp) : nil
+        refreshExpiredPause()
+        schedulePauseTimer()
+    }
+
+    private func refreshExpiredPause() {
+        guard isPaused, let pauseUntil, pauseUntil <= Date() else { return }
+        setPause(until: nil, paused: false)
+    }
+
+    private func schedulePauseTimer() {
+        pauseTimer?.invalidate()
+        pauseTimer = nil
+        guard isPaused, let pauseUntil else { return }
+        let timer = Timer(fireAt: pauseUntil, interval: 0, target: self, selector: #selector(pauseTimerFired(_:)), userInfo: nil, repeats: false)
+        RunLoop.main.add(timer, forMode: .common)
+        pauseTimer = timer
+    }
+
+    private func setPause(until: Date?, paused: Bool) {
+        isPaused = paused
+        pauseUntil = paused ? until : nil
+
+        let defaults = UserDefaults.standard
+        if paused {
+            defaults.set(true, forKey: pausedDefaultsKey)
+            if let until {
+                defaults.set(until.timeIntervalSince1970, forKey: pauseUntilDefaultsKey)
+            } else {
+                defaults.removeObject(forKey: pauseUntilDefaultsKey)
+            }
+            pendingPIDs.removeAll()
+        } else {
+            defaults.removeObject(forKey: pausedDefaultsKey)
+            defaults.removeObject(forKey: pauseUntilDefaultsKey)
+        }
+
+        schedulePauseTimer()
+        updateStatusItemAppearance()
+        refreshAboutWindowIfVisible()
+    }
+
+    private func refreshAboutWindowIfVisible() {
+        guard let aboutWindow, aboutWindow.isVisible else { return }
+        aboutWindow.orderOut(nil)
+        self.aboutWindow = nil
+        showAbout()
+    }
+
+    @objc private func pauseForDuration(_ sender: NSMenuItem) {
+        setPause(until: Date().addingTimeInterval(TimeInterval(sender.tag)), paused: true)
+    }
+
+    @objc private func pauseUntilResumed() {
+        setPause(until: nil, paused: true)
+    }
+
+    @objc private func resumeAutoCentering() {
+        setPause(until: nil, paused: false)
+    }
+
+    @objc private func pauseTimerFired(_ timer: Timer) {
+        resumeAutoCentering()
+    }
+
+    @objc private func exportSettings() {
+        let panel = NSSavePanel()
+        panel.title = "Export Auto Center Windows Settings"
+        panel.nameFieldStringValue = "Auto Center Windows Settings.plist"
+        panel.allowedContentTypes = [.propertyList]
+        panel.canCreateDirectories = true
+        NSApp.activate(ignoringOtherApps: true)
+        centerUtilityWindow(panel)
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+
+        do {
+            let export = PreferencesExport(formatVersion: 1, apps: preferences)
+            let encoder = PropertyListEncoder()
+            encoder.outputFormat = .xml
+            try encoder.encode(export).write(to: url, options: .atomic)
+            showMessage(title: "Settings exported", message: "Your app and window choices were saved successfully.")
+        } catch {
+            showMessage(title: "Export failed", message: "Auto Center Windows could not save the settings file.")
+        }
+    }
+
+    @objc private func importSettings() {
+        let panel = NSOpenPanel()
+        panel.title = "Import Auto Center Windows Settings"
+        panel.allowedContentTypes = [.propertyList]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        NSApp.activate(ignoringOtherApps: true)
+        centerUtilityWindow(panel)
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+
+        do {
+            let data = try Data(contentsOf: url, options: .mappedIfSafe)
+            guard data.count <= 5_000_000 else {
+                throw CocoaError(.fileReadTooLarge)
+            }
+            let imported = try PropertyListDecoder().decode(PreferencesExport.self, from: data)
+            guard imported.formatVersion == 1 else {
+                throw CocoaError(.fileReadCorruptFile)
+            }
+            for (key, preference) in imported.apps {
+                preferences[key] = preference
+            }
+            savePreferences()
+            refreshAboutWindowIfVisible()
+            showMessage(
+                title: "Settings imported",
+                message: "Imported \(imported.apps.count) app choices. Existing apps not in the file were kept."
+            )
+        } catch {
+            showMessage(title: "Import failed", message: "Choose a settings file previously exported by Auto Center Windows.")
+        }
+    }
+
+    private func showMessage(title: String, message: String) {
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = message
+        alert.addButton(withTitle: "OK")
+        NSApp.activate(ignoringOtherApps: true)
+        centerUtilityWindow(alert.window)
+        alert.runModal()
     }
 
     @objc private func openAccessibilitySettings() {
@@ -771,7 +1096,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
         let details: [(String, String)] = [
             ("Version", version),
-            ("Status", "Running"),
+            ("Status", isPaused ? "Paused" : "Running"),
             ("Accessibility", AXIsProcessTrusted() ? "Enabled" : "Needed")
         ]
         var y: CGFloat = 210
@@ -1199,6 +1524,13 @@ private func runSelfTests() -> Bool {
           let decoded = try? PropertyListDecoder().decode([String: AppPreference].self, from: data),
           decoded["com.apple.safari"]?.enabled == false,
           decoded["com.apple.safari"]?.windows[titleIdentity.key]?.enabled == true
+    else { return false }
+
+    let export = PreferencesExport(formatVersion: 1, apps: sample)
+    guard let exportData = try? encoder.encode(export),
+          let decodedExport = try? PropertyListDecoder().decode(PreferencesExport.self, from: exportData),
+          decodedExport.formatVersion == 1,
+          decodedExport.apps["com.apple.safari"]?.windows.count == 1
     else { return false }
 
     let legacyObject: [String: Any] = [
