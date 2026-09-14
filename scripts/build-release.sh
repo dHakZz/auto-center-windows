@@ -3,7 +3,7 @@ set -euo pipefail
 
 readonly SCRIPT_DIR="${0:A:h}"
 readonly REPO_DIR="${SCRIPT_DIR:h}"
-readonly VERSION="${1:-1.5.0}"
+readonly VERSION="${1:-1.5.1}"
 readonly BUILD_NUMBER="${2:-1}"
 readonly SOURCE="$REPO_DIR/payload/source/AutoCenterWindows.swift"
 readonly LAUNCHER_SOURCE="$REPO_DIR/payload/source/AutoCenterWindowsLauncher.c"
