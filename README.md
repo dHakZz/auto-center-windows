@@ -39,7 +39,7 @@ The downloadable ZIP contains the installer, app manager, uninstaller, and a det
 4. When macOS asks, enable **Auto Center Windows** in Accessibility settings.
 5. Open an app or create a new window to test it.
 
-If macOS blocks the installer, Control-click it, choose **Open**, then click **Open** again. This is a personal build and is not notarized through Apple's paid developer program.
+If macOS blocks the installer, try opening it once, then go to **System Settings → Privacy & Security**, scroll to **Security**, and choose **Open Anyway**. Confirm with your Mac password and click **Open**. The button appears only after macOS blocks an opening attempt. This is a personal build and is not notarized through Apple's paid developer program.
 
 ## Manage apps
 
@@ -76,7 +76,7 @@ The only saved information is:
 
 - macOS 13 Ventura or later
 - Apple silicon and Intel Macs
-- Version 1.5.0
+- Version 1.5.1
 
 Some apps deliberately prevent accessibility tools from moving their windows, so an occasional app may not center.
 
@@ -112,7 +112,7 @@ The Swift source for the menu-bar utility and the C source for its native launch
 To create the same universal Apple-silicon/Intel release locally, run:
 
 ```sh
-/bin/zsh ./scripts/build-release.sh 1.5.0 160
+/bin/zsh ./scripts/build-release.sh 1.5.1 161
 ```
 
 GitHub Actions runs the same build and uploads the verified ZIP as a workflow artifact.

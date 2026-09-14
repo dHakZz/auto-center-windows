@@ -1,9 +1,12 @@
-# Auto Center Windows 1.5.0
+# Auto Center Windows 1.5.1
 
 Auto Center Windows is a lightweight macOS menu-bar utility that automatically centers the first normal window when an app opens and newly created windows afterward.
 
 ## Highlights
 
+- Fixes **Bootstrap failed: 5** when installing a downloaded release.
+- Prevents macOS download quarantine metadata from reaching the installed launcher and LaunchAgent.
+- Recovers cleanly after a partial or failed 1.5.0 installation.
 - Automatically learns apps and enables centering by default.
 - Pauses automatic centering for 15 minutes, 1 hour, or until manually resumed.
 - Remembers a pause across restarts and automatically ends timed pauses.
@@ -26,11 +29,11 @@ Auto Center Windows is a lightweight macOS menu-bar utility that automatically c
 
 ## Installation
 
-1. Download `Auto-Center-Windows-v1.5.0.zip` and unzip it.
+1. Download `Auto-Center-Windows-v1.5.1.zip` and unzip it.
 2. Double-click **Install Auto Center Windows.command**.
 3. Enable **Auto Center Windows** when macOS opens Accessibility settings.
 
-Because this is a personal, non-notarized build, macOS may require you to Control-click the installer and choose **Open**.
+Because this is a personal, non-notarized build, macOS may block the first opening attempt. If it does, open **System Settings → Privacy & Security**, scroll to **Security**, choose **Open Anyway**, and confirm with your Mac password.
 
 ## Integrity
 

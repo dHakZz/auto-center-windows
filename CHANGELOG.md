@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.5.1
+
+- Fixed **Bootstrap failed: 5** when installing a quarantined downloaded release.
+- Stopped download quarantine metadata from being copied to the native launcher and LaunchAgent plist.
+- Made the installer recover cleanly from a partial or failed 1.5.0 installation.
+- Updated Gatekeeper instructions to use macOS **Open Anyway**.
+
 ## 1.5.0
 
 - Added 15-minute, 1-hour, and indefinite pause options to the menu-bar menu.

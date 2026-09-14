@@ -41,7 +41,7 @@ if [[ ! -f "$APP_ARCHIVE" || ! -f "$LAUNCHER_SOURCE" || ! -f "$PAYLOAD_DIR/com.j
 fi
 
 /bin/mkdir -p "$HOME/Library/Logs"
-/usr/bin/printf '%s Starting Auto Center Windows 1.5.0 installation.\n' "$(/bin/date '+%Y-%m-%d %H:%M:%S')" >> "$INSTALL_LOG"
+/usr/bin/printf '%s Starting Auto Center Windows 1.5.1 installation.\n' "$(/bin/date '+%Y-%m-%d %H:%M:%S')" >> "$INSTALL_LOG"
 trap 'installation_failed $LINENO' ERR
 
 if [[ -L "$INSTALL_DIR" || -L "$LAUNCHER_PATH" || -L "$STATE_PATH" || -L "$PERMISSION_PROMPT_MARKER" || -L "$APP_BUNDLE" || -L "$LEGACY_APP" || -L "$LEGACY_SETTINGS_APP" || -L "$AGENT_PATH" ]]; then
@@ -60,6 +60,7 @@ fi
 /bin/launchctl bootout "$GUI_DOMAIN/$LABEL" >/dev/null 2>&1 || true
 /bin/launchctl bootout "$GUI_DOMAIN" "$AGENT_PATH" >/dev/null 2>&1 || true
 /bin/mkdir -p "$INSTALL_DIR" "$HOME/Applications"
+/usr/bin/xattr -d com.apple.quarantine "$INSTALL_DIR" "$HOME/Library/LaunchAgents" >/dev/null 2>&1 || true
 /bin/rm -f -- "$AGENT_PATH"
 
 if [[ -e "$APP_BUNDLE" ]]; then
@@ -92,8 +93,9 @@ temp_app="$temp_dir/Auto Center Windows.app"
 # macOS shows a personal background item using the executable's filename and
 # file icon. This native launcher preserves the friendly app name and custom
 # icon without routing startup or Accessibility responsibility through a shell.
-/usr/bin/ditto "$LAUNCHER_SOURCE" "$LAUNCHER_PATH"
+/usr/bin/ditto --norsrc --noextattr --noqtn "$LAUNCHER_SOURCE" "$LAUNCHER_PATH"
 /bin/chmod 755 "$LAUNCHER_PATH"
+/usr/bin/xattr -d com.apple.quarantine "$LAUNCHER_PATH" >/dev/null 2>&1 || true
 /usr/bin/codesign --verify --strict "$LAUNCHER_PATH"
 "$APP_BUNDLE/Contents/MacOS/AutoCenterWindows" --set-file-icon "$APP_BUNDLE/Contents/Resources/AutoCenterWindows.icns" "$LAUNCHER_PATH"
 [[ -x "$LAUNCHER_PATH" && ! -L "$LAUNCHER_PATH" ]]
@@ -119,7 +121,8 @@ fi
 /usr/bin/plutil -lint "$STATE_PATH" >/dev/null
 /bin/chmod 600 "$STATE_PATH"
 
-/usr/bin/ditto "$PAYLOAD_DIR/com.justin.auto-center-windows.plist" "$AGENT_PATH"
+/usr/bin/ditto --norsrc --noextattr --noqtn "$PAYLOAD_DIR/com.justin.auto-center-windows.plist" "$AGENT_PATH"
+/usr/bin/xattr -d com.apple.quarantine "$AGENT_PATH" >/dev/null 2>&1 || true
 /usr/bin/plutil -remove ProgramArguments "$AGENT_PATH"
 /usr/bin/plutil -insert ProgramArguments -array "$AGENT_PATH"
 /usr/bin/plutil -insert ProgramArguments.0 -string "$LAUNCHER_PATH" "$AGENT_PATH"
@@ -136,4 +139,4 @@ fi
 
 /usr/bin/printf '%s Installation completed with named background launcher verified running.\n' "$(/bin/date '+%Y-%m-%d %H:%M:%S')" >> "$INSTALL_LOG"
 trap - ERR
-show_message info "Installation complete" "Auto Center Windows 1.5.0 is installed and verified running. You can now pause and resume automatic centering from the menu-bar icon. Approve the one-time Accessibility request."
+show_message info "Installation complete" "Auto Center Windows 1.5.1 is installed and verified running. You can now pause and resume automatic centering from the menu-bar icon. Approve the one-time Accessibility request."

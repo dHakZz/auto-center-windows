@@ -1,7 +1,14 @@
-AUTO CENTER WINDOWS 1.5.0 FOR MAC
+AUTO CENTER WINDOWS 1.5.1 FOR MAC
 
-What changed in 1.5.0
+What changed in 1.5.1
 ----------------------
+• Fixes “Bootstrap failed: 5” when installing a downloaded release.
+• Prevents quarantine metadata from being copied onto the native launcher and
+  LaunchAgent file before macOS registers the background utility.
+• Recovers automatically from a partial or failed 1.5.0 installation.
+
+Also included from 1.5.0
+------------------------
 • Pauses automatic centering for 15 minutes, 1 hour, or until you resume.
 • Automatically resumes when a timed pause ends.
 • Remembers an active pause across app and Mac restarts.
@@ -123,12 +130,14 @@ Install
    specific build identity.
 4. Open an app or create a new window to test it.
 
-If macOS blocks the installer, Control-click the installer, choose Open, then
-click Open again.
+If macOS blocks the installer, try opening it once, then open System Settings,
+choose Privacy & Security, scroll to Security, and click “Open Anyway.” Confirm
+with your Mac password and click Open. “Open Anyway” appears only after macOS
+blocks an opening attempt.
 
 After you approve the installer, it removes download quarantine only from its
-own bundled helper so that the named background launcher can start without a second
-Gatekeeper interruption. The helper is code-signed and checked before launch.
+own installed app, launcher, and startup file so the utility can start without a
+second Gatekeeper interruption. The helper is code-signed and checked before launch.
 
 Turn individual apps on or off
 ------------------------------
